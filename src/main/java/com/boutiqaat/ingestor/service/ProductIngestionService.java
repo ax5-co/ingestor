@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -41,22 +40,20 @@ public class ProductIngestionService implements IngestionStreamWriter {
 
     @Transactional(readOnly = true)
     @Override
-    public void ingest(OutputStream outputStream, int startPage, int pageSize, boolean showSuccess, boolean showFailure) {
-        int lastPage = Integer.MAX_VALUE;
-        Pageable pageable;
-        int page = Math.max(startPage, 0);
+    public void ingest(OutputStream outputStream, int minProductId, int pageSize, boolean showSuccess, boolean showFailure) {
+        long minId = Math.max(minProductId, 0);
+        Pageable pageable = PageRequest.of(0, pageSize);
         try (PrintWriter output = new PrintWriter(outputStream, true)) {
             output.println(opening);
             AtomicLong successes = new AtomicLong();
             AtomicLong failures = new AtomicLong();
-            while (page <= lastPage) {
-                pageable = PageRequest.of(page, pageSize);
-                Page<CatalogProductEntity> paged = productRepository.findAll(pageable);
-                List<CatalogProductEntity> fetchedProducts = paged.getContent();
-                if (lastPage == Integer.MAX_VALUE) {
-                    lastPage = paged.getTotalPages();
+            while (true) {
+                List<CatalogProductEntity> fetchedProducts =
+                        productRepository.findAllByProductIdGreaterThanOrderByProductIdAsc(minId, pageable);
+                if (fetchedProducts.isEmpty()) {
+                    break;
                 }
-                log.info("Fetched page {} from CatalogProductEntity of size {} of total pages {}", page, pageSize, lastPage);
+                log.info("Fetched {} records from CatalogProductEntity starting at productId {} ", pageSize, minId);
                 final Map<Long, SkuModel> toBeUpserted = fetchedProducts.stream()
                         .map(product -> SkuModel
                                 .builder()
@@ -68,9 +65,9 @@ public class ProductIngestionService implements IngestionStreamWriter {
                         .collect(Collectors.toMap(SkuModel::getProductId, skuModel -> skuModel));
 
                 if (!toBeUpserted.values().isEmpty()) {
-                    log.info("Calling POST /sku on productIds {}", toBeUpserted.keySet());
                     try {
                         crsClient.upsertProducts(new ArrayList<>(toBeUpserted.values()));
+                        log.info("Called POST /sku on {} productIds", toBeUpserted.keySet().size());
                         if (showSuccess) {
                             toBeUpserted.values().forEach(model -> {
                                 successes.getAndIncrement();
@@ -99,7 +96,7 @@ public class ProductIngestionService implements IngestionStreamWriter {
                         });
                     }
                 }
-                page++;
+                minId = fetchedProducts.get(fetchedProducts.size() - 1).getProductId();
             }
             output.println(closing);
         }

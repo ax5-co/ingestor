@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -23,7 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
- * Service purpose is to run real-time ingestion for all products through CDC real-time API.
+ * Service purpose is to run real-time ES ingestion for scanned products through CDC real-time API.
  *
  */
 @Slf4j(topic = "ES Ingestion")
@@ -37,35 +36,34 @@ public class ProductIndexingService implements IngestionStreamWriter {
 
     @Transactional(readOnly = true)
     @Override
-    public void ingest(OutputStream outputStream, int startPage, int pageSize, boolean showSuccess, boolean showFailure) {
-        int lastPage = Integer.MAX_VALUE;
-        int page = Math.max(startPage, 0);
+    public void ingest(OutputStream outputStream, int minProductId, int pageSize, boolean showSuccess, boolean showFailure) {
+        long minId = Math.max(minProductId, 0);
+        Pageable pageable = PageRequest.of(0, pageSize);
         try (PrintWriter output = new PrintWriter(outputStream, true)) {
             output.println(opening);
             AtomicLong successes = new AtomicLong();
             AtomicLong failures = new AtomicLong();
-            while (page <= lastPage) {
-                Pageable pageable = PageRequest.of(page, pageSize);
-                Page<CatalogProductEntity> paged = productRepository.findAll(pageable);
-                List<CatalogProductEntity> fetchedProducts = paged.getContent();
-                if (lastPage == Integer.MAX_VALUE) {
-                    lastPage = paged.getTotalPages();
+            while (true) {
+                List<CatalogProductEntity> fetchedProducts =
+                        productRepository.findAllByProductIdGreaterThanOrderByProductIdAsc(minId, pageable);
+                if (fetchedProducts.isEmpty()) {
+                    break;
                 }
-                log.info("Fetched page {} from CatalogProductEntity of size {} of total pages {}", page, pageSize, lastPage);
+                log.info("Fetched {} records from CatalogProductEntity starting at productId {} ", pageSize, minId);
                 String toBeIndexed = fetchedProducts.stream()
                         .map(model -> String.valueOf(model.getProductId()))
                         .collect(Collectors.joining(","));
 
                 if (!toBeIndexed.isEmpty()) {
-                    log.debug("Calling GET /realtime on productIds {}", toBeIndexed);
                     try {
                         ResponseEntity<?> response = cdcClient.indexProducts(toBeIndexed);
-                        log.debug("response status: {}", response.getStatusCodeValue());
+                        log.info("Response status = {} from GET /realtime ", response.getStatusCodeValue());
                         if (response.getStatusCode().equals(HttpStatus.OK) && showSuccess) {
                             successes.getAndIncrement();
                             writeSuccess(output, mapper, log, toBeIndexed, successes);
-                        } else if (!response.getStatusCode().equals(HttpStatus.OK) ||
-                                !Objects.requireNonNull(response.getBody()).toString().contains("success")) {
+                        } else if (!response.getStatusCode().equals(HttpStatus.OK)
+                                || Objects.isNull(response.getBody())
+                                || !response.getBody().toString().contains("success")) {
                             log.error("Failure in GET /realtime on productIds {}", toBeIndexed);
                             if (showFailure) {
                                 failures.getAndIncrement();
@@ -80,7 +78,7 @@ public class ProductIndexingService implements IngestionStreamWriter {
                         }
                     }
                 }
-                page++;
+                minId = fetchedProducts.get(fetchedProducts.size() -1).getProductId();
             }
             output.println(closing);
         }
