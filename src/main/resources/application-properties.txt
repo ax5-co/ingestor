@@ -1,0 +1,18 @@
+server.port = 8099
+
+spring.datasource.username =
+spring.datasource.password =
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.url=
+
+spring.datasource.ucm.hikari.auto-commit=false
+jpa.database=default
+jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect
+spring.jpa.generate-ddl=false
+spring.jpa.hibernate.ddl-auto=none
+
+crs.base.url=${CRS_BIND_BASE_URL:https://crsplus-develop.stgboutiqaat.com/}
+cdc.base.url=${CDC_BIND_BASE_URL:http://172.31.18.29:8012/}
+feign.client.config.default.connectTimeout= 3000000
+feign.client.config.default.readTimeout= 3000000
+
