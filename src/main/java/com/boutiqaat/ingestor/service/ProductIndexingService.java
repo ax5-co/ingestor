@@ -1,10 +1,7 @@
 package com.boutiqaat.ingestor.service;
 
 import com.boutiqaat.ingestor.entity.CatalogProductEntity;
-import com.boutiqaat.ingestor.feignClient.CdcClient;
-import com.boutiqaat.ingestor.repository.ProductRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +15,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -29,10 +27,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ProductIndexingService implements IngestionStreamWriter {
-    private final ProductRepository productRepository;
-    private final CdcClient cdcClient;
+    private final AsyncService asyncService;
     private final ObjectMapper mapper;
-
 
     @Transactional(readOnly = true)
     @Override
@@ -44,8 +40,13 @@ public class ProductIndexingService implements IngestionStreamWriter {
             AtomicLong successes = new AtomicLong();
             AtomicLong failures = new AtomicLong();
             while (true) {
-                List<CatalogProductEntity> fetchedProducts =
-                        productRepository.findAllByProductIdGreaterThanOrderByProductIdAsc(minId, pageable);
+                List<CatalogProductEntity> fetchedProducts;
+                try {
+                    fetchedProducts = asyncService.findAllProducts(pageable).get();
+                } catch (ExecutionException | InterruptedException ex) {
+                    log.error("Async DB call failed!");
+                    continue;
+                }
                 if (fetchedProducts.isEmpty()) {
                     break;
                 }
@@ -55,23 +56,29 @@ public class ProductIndexingService implements IngestionStreamWriter {
                         .collect(Collectors.joining(","));
 
                 if (!toBeIndexed.isEmpty()) {
+                    log.debug("Calling GET /realtime on productIds {}", toBeIndexed);
+                    ResponseEntity<?> response;
                     try {
-                        ResponseEntity<?> response = cdcClient.indexProducts(toBeIndexed);
-                        log.info("Response status = {} from GET /realtime ", response.getStatusCodeValue());
-                        if (response.getStatusCode().equals(HttpStatus.OK) && showSuccess) {
-                            successes.getAndIncrement();
-                            writeSuccess(output, mapper, log, toBeIndexed, successes);
-                        } else if (!response.getStatusCode().equals(HttpStatus.OK)
-                                || Objects.isNull(response.getBody())
-                                || !response.getBody().toString().contains("success")) {
-                            log.error("Failure in GET /realtime on productIds {}", toBeIndexed);
+                        response = asyncService.esIndex(toBeIndexed).handle((s, t) -> {
+                            if (s != null) return s;
+
                             if (showFailure) {
                                 failures.getAndIncrement();
                                 writeFailure(output, mapper, log, toBeIndexed, failures);
                             }
-                        }
-                    } catch (FeignException e) {
-                        log.error("EXCEPTION in GET /realtime on productIds {}", toBeIndexed, e);
+                            return ResponseEntity.badRequest().build();
+                        }).get();
+                    } catch (ExecutionException | InterruptedException ex) {
+                        log.error("Async API call failed!");
+                        continue;
+                    }
+                    log.debug("response status: {}", response.getStatusCodeValue());
+                    if (response.getStatusCode().equals(HttpStatus.OK) && showSuccess) {
+                        successes.getAndIncrement();
+                        writeSuccess(output, mapper, log, toBeIndexed, successes);
+                    } else if (!response.getStatusCode().equals(HttpStatus.OK) ||
+                            !Objects.requireNonNull(response.getBody()).toString().contains("success")) {
+                        log.error("Failure in GET /realtime on productIds {}", toBeIndexed);
                         if (showFailure) {
                             failures.getAndIncrement();
                             writeFailure(output, mapper, log, toBeIndexed, failures);

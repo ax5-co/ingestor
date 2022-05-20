@@ -28,11 +28,12 @@ public class AsyncConfig implements AsyncConfigurer {
     @Override
     @Bean (name = "taskExecutor")
     public AsyncTaskExecutor getAsyncExecutor() {
-        log.debug("Creating Async Task Executor");
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);
-        executor.setMaxPoolSize(10);
-        executor.setQueueCapacity(25);
+        executor.setCorePoolSize(3);
+        executor.setMaxPoolSize(3);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("ingestor-");
+        executor.initialize();
         return executor;
     }
 
