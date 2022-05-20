@@ -6,12 +6,12 @@ import com.boutiqaat.ingestor.repository.ProductRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j(topic = "Async Service")
@@ -23,8 +23,8 @@ public class AsyncService {
     private final CdcClient cdcClient;
 
     @Async
-    public CompletableFuture<Page<CatalogProductEntity>> findAllProducts(Pageable pageable) {
-        return CompletableFuture.supplyAsync(() -> productRepository.findAll(pageable));
+    public CompletableFuture<List<CatalogProductEntity>> findAllProducts(long minProductId, Pageable pageable) {
+        return CompletableFuture.supplyAsync(() -> productRepository.findAllByProductIdGreaterThanOrderByProductIdAsc(minProductId, pageable));
     }
 
     @Async

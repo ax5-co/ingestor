@@ -42,14 +42,13 @@ public class ProductIndexingService implements IngestionStreamWriter {
             while (true) {
                 List<CatalogProductEntity> fetchedProducts;
                 try {
-                    fetchedProducts = asyncService.findAllProducts(pageable).get();
+                    fetchedProducts = asyncService.findAllProducts(minId, pageable).get();
                 } catch (ExecutionException | InterruptedException ex) {
                     log.error("Async DB call failed!");
                     continue;
                 }
-                if (fetchedProducts.isEmpty()) {
-                    break;
-                }
+                if (fetchedProducts.isEmpty()) break;
+
                 log.info("Fetched {} records from CatalogProductEntity starting at productId {} ", pageSize, minId);
                 String toBeIndexed = fetchedProducts.stream()
                         .map(model -> String.valueOf(model.getProductId()))
