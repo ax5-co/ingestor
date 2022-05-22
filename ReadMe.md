@@ -48,4 +48,4 @@ Feed [price] table of multi_stocks DB, with dummy data (SA)
 curl --location --request POST "http://localhost:8099/ingestion/price?dummy=true" --output -
 
 Feed [ES products index]
-curl --location --request POST "http://localhost:8099/ingestion/es-index?startPage=0&pageSize=200" --output -
+curl --location --request POST "http://localhost:8099/ingestion/es-index?startPage=0&pageSize=1000" --output -
