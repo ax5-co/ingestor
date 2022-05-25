@@ -1,9 +1,9 @@
 package com.boutiqaat.ingestor.service;
 
 import com.boutiqaat.ingestor.Constants;
-import com.boutiqaat.ingestor.entity.CatalogProductEntity;
+import com.boutiqaat.ingestor.entity.BasicEntity;
 import com.boutiqaat.ingestor.feignClient.CdcClient;
-import com.boutiqaat.ingestor.repository.ProductRepository;
+import com.boutiqaat.ingestor.repository.IndexPaginationRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -24,35 +24,37 @@ import java.util.stream.Collectors;
 @Slf4j(topic = "ES Ingestion")
 @Service
 @RequiredArgsConstructor
-public class CdcIndexingService {
-    private final ProductRepository productRepository;
+public abstract class CdcIndexingService <R extends IndexPaginationRepo<E>, E extends BasicEntity> {
     private final CdcClient cdcClient;
+    private final R repository;
+    protected String LOG_TAG = "";
+
 
     @Transactional(readOnly = true)
-    public String indexProducts(int minProductId, int pageSize) {
-        long minId = Math.max(minProductId, 0);
+    public String index(int startProductId, int pageSize, String type) {
+        long minId = Math.max(startProductId, 0);
         Pageable pageable = PageRequest.of(0, pageSize);
         List<CompletableFuture<String>> cdcCalls = new ArrayList<>();
 
         while (true) {
-            List<String> fetchedProductIds =
-                    productRepository.findAllByProductIdGreaterThanOrderByProductIdAsc(minId, pageable)
+            List<String> fetchedIds =
+                    repository.findAllByIdGreaterThanOrderByIdAsc(minId, pageable)
                             .stream()
-                            .map(CatalogProductEntity::getProductId)
+                            .map(E::getId)
                             .map(String::valueOf)
                             .collect(Collectors.toList());
-            if (fetchedProductIds.isEmpty()) {
+            if (fetchedIds.isEmpty()) {
                 break;
             }
-            log.info("Fetched {} records from CatalogProductEntity starting at productId {} till productId {}",
-                    pageSize, fetchedProductIds.get(0), fetchedProductIds.get(fetchedProductIds.size()-1));
+            log.info("{} Fetched {} records starting at Id {} till Id {}",
+                    LOG_TAG, pageSize, fetchedIds.get(0), fetchedIds.get(fetchedIds.size()-1));
             cdcCalls.add(CompletableFuture
-                    .supplyAsync(() -> cdcClient.indexProducts(String.join(",", fetchedProductIds)))
+                    .supplyAsync(() -> callCdcApi(type, fetchedIds))
                     .exceptionally(e -> {
-                        log.error("Failure in GET /realtime, with Exception {}", e.getMessage());
+                        log.error("{} Failure in API call, with Exception {}", LOG_TAG, e.getMessage());
                         return Constants.FAILURE;
                     }));
-            minId = Long.parseLong(fetchedProductIds.get(fetchedProductIds.size() -1));
+            minId = Long.parseLong(fetchedIds.get(fetchedIds.size() -1));
         }
         CompletableFuture<Void> allResult =
                 CompletableFuture.allOf(cdcCalls.toArray(new CompletableFuture[0]));
@@ -67,5 +69,14 @@ public class CdcIndexingService {
             e.printStackTrace();
         }
         return Constants.FAILURE;
+    }
+
+    private String callCdcApi(String type, List<String> fetchedIds) {
+        if (type.equalsIgnoreCase(Constants.CDC_PRODUCTS)) {
+            return cdcClient.indexProducts(String.join(",", fetchedIds));
+        } else if (type.equalsIgnoreCase(Constants.CDC_CELEBRITIES)) {
+            return cdcClient.indexCelebrities(String.join(",", fetchedIds));
+        }
+        return null;
     }
 }
