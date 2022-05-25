@@ -11,4 +11,10 @@ public interface CdcClient {
     @Async
     @GetMapping("/rest/V1/realtime/{productList}")
     String indexProducts(@PathVariable("productList") String productString);
+
+    @Async
+    @GetMapping(value = "/rest/V1/realtime/celebrity/{celebritylist}")
+    String indexCelebrities(@PathVariable("celebritylist") String celebrityList);
+
+    //TODO -- add brand enriching, category enriching, for suggestions index ??
 }

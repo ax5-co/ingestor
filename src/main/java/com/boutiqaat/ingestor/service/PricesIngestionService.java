@@ -74,7 +74,7 @@ public class PricesIngestionService implements IngestionStreamWriter {
                         .map(product -> SkuModel
                                 .builder()
                                 .sku(product.getSku())
-                                .productId(product.getProductId())
+                                .productId(product.getId())
                                 .description("")
                                 .type(product.getType().toUpperCase())
                                 .build())

@@ -70,7 +70,7 @@ public class InventoryIngestionService implements IngestionStreamWriter {
                         .map(product -> new InventoryModel(SkuModel
                                 .builder()
                                 .sku(product.getSku())
-                                .productId(product.getProductId())
+                                .productId(product.getId())
                                 .description("")
                                 .type(product.getType().toUpperCase())
                                 .build()))

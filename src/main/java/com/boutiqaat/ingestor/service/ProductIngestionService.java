@@ -49,7 +49,7 @@ public class ProductIngestionService implements IngestionStreamWriter {
             AtomicLong failures = new AtomicLong();
             while (true) {
                 List<CatalogProductEntity> fetchedProducts =
-                        productRepository.findAllByProductIdGreaterThanOrderByProductIdAsc(minId, pageable);
+                        productRepository.findAllByIdGreaterThanOrderByIdAsc(minId, pageable);
                 if (fetchedProducts.isEmpty()) {
                     break;
                 }
@@ -58,7 +58,7 @@ public class ProductIngestionService implements IngestionStreamWriter {
                         .map(product -> SkuModel
                                 .builder()
                                 .sku(product.getSku())
-                                .productId(product.getProductId())
+                                .productId(product.getId())
                                 .description("")
                                 .type(product.getType().toUpperCase())
                                 .build())
@@ -96,7 +96,7 @@ public class ProductIngestionService implements IngestionStreamWriter {
                         });
                     }
                 }
-                minId = fetchedProducts.get(fetchedProducts.size() - 1).getProductId();
+                minId = fetchedProducts.get(fetchedProducts.size() - 1).getId();
             }
             output.println(closing);
         }

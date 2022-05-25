@@ -69,10 +69,10 @@ public class ConfigIngestionService implements IngestionStreamWriter {
                 //CRS SkuController does not provide a filter API on product_id, & we need sku codes
                 Map<Long, SkuModel> products = productRepository.findAllById(ids)
                         .stream()
-                        .collect(Collectors.toMap(CatalogProductEntity::getProductId, entity -> SkuModel
+                        .collect(Collectors.toMap(CatalogProductEntity::getId, entity -> SkuModel
                                 .builder()
                                 .sku(entity.getSku())
-                                .productId(entity.getProductId())
+                                .productId(entity.getId())
                                 .type(entity.getType().toUpperCase())
                                 .description("")
                                 .build()));

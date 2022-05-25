@@ -12,7 +12,8 @@ import java.util.List;
  *
  */
 @Repository
-public interface ProductRepository extends JpaRepository<CatalogProductEntity, Long> {
+public interface ProductRepository extends JpaRepository<CatalogProductEntity, Long>,
+        IndexPaginationRepo<CatalogProductEntity> {
 
-    List<CatalogProductEntity> findAllByProductIdGreaterThanOrderByProductIdAsc(Long productId, Pageable pageable);
+    List<CatalogProductEntity> findAllByIdGreaterThanOrderByIdAsc(Long id, Pageable pageable);
 }
