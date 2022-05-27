@@ -30,9 +30,10 @@ public class AsyncConfig implements AsyncConfigurer {
     public AsyncTaskExecutor getAsyncExecutor() {
         log.debug("Creating Async Task Executor");
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);
-        executor.setMaxPoolSize(10);
-        executor.setQueueCapacity(25);
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(1000);
+        executor.initialize();
         return executor;
     }
 
@@ -61,7 +62,6 @@ public class AsyncConfig implements AsyncConfigurer {
             @Override
             public <T> Object handleTimeout(NativeWebRequest request, Callable<T> task) {
                 log.error("timeout!");
-                // super.handleTimeout(request, task);
                 return ResponseEntity.internalServerError().body("Timeout!");
             }
         };

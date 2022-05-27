@@ -18,7 +18,7 @@ import java.util.Objects;
 public class CatalogProductEntity extends BasicEntity{
     @Id
     @Column(name = "row_id")
-    private Long id;
+    private long id;
 
     @Column(name = "type_id")
     private String type;

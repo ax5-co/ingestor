@@ -2,7 +2,6 @@ package com.boutiqaat.ingestor.service;
 
 import com.boutiqaat.ingestor.Constants;
 import com.boutiqaat.ingestor.entity.BasicEntity;
-import com.boutiqaat.ingestor.feignClient.CdcClient;
 import com.boutiqaat.ingestor.repository.IndexPaginationRepo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +24,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public abstract class CdcIndexingService <R extends IndexPaginationRepo<E>, E extends BasicEntity> {
-    private final CdcClient cdcClient;
+    private final AsyncCallService apiService;
     private final R repository;
     protected String LOG_TAG = "";
 
@@ -48,10 +47,9 @@ public abstract class CdcIndexingService <R extends IndexPaginationRepo<E>, E ex
             }
             log.info("{} Fetched {} records starting at Id {} till Id {}",
                     LOG_TAG, pageSize, fetchedIds.get(0), fetchedIds.get(fetchedIds.size()-1));
-            cdcCalls.add(CompletableFuture
-                    .supplyAsync(() -> callCdcApi(type, fetchedIds))
+            cdcCalls.add(apiService.callCdcApi(type, fetchedIds)
                     .exceptionally(e -> {
-                        log.error("{} Failure in API call, with Exception {}", LOG_TAG, e.getMessage());
+                        log.error("Failure in API call for {}, with Exception {}", LOG_TAG, e.getMessage());
                         return Constants.FAILURE;
                     }));
             minId = Long.parseLong(fetchedIds.get(fetchedIds.size() -1));
@@ -69,14 +67,5 @@ public abstract class CdcIndexingService <R extends IndexPaginationRepo<E>, E ex
             e.printStackTrace();
         }
         return Constants.FAILURE;
-    }
-
-    private String callCdcApi(String type, List<String> fetchedIds) {
-        if (type.equalsIgnoreCase(Constants.CDC_PRODUCTS)) {
-            return cdcClient.indexProducts(String.join(",", fetchedIds));
-        } else if (type.equalsIgnoreCase(Constants.CDC_CELEBRITIES)) {
-            return cdcClient.indexCelebrities(String.join(",", fetchedIds));
-        }
-        return null;
     }
 }
