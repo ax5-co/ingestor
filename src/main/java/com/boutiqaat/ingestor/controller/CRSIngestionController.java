@@ -37,10 +37,10 @@ import java.io.OutputStream;
  */
 @Slf4j
 @RestController
-@RequestMapping("/ingestion")
+@RequestMapping("/crs")
 @RequiredArgsConstructor
-public class IngestionController {
-    private final ProductIndexingService productIndexingService;
+public class CRSIngestionController {
+
     private final ProductIngestionService productIngestionService;
     private final BundleIngestionService bundleIngestionService;
     private final ConfigIngestionService configIngestionService;
@@ -52,15 +52,6 @@ public class IngestionController {
     private boolean showSuccess, showFailure;
     private IngestionStreamWriter ingestionStreamWriterService;
 
-    @PostMapping(value = "/es-index", produces = MediaType.APPLICATION_NDJSON_VALUE)
-    public ResponseEntity<StreamingResponseBody> indexProducts(@RequestParam (defaultValue = "0") int startPage,
-                                                                @RequestParam (defaultValue = "200") int pageSize,
-                                                                @RequestParam (defaultValue = "false") boolean showSuccess,
-                                                                @RequestParam (defaultValue = "true") boolean showFailure) {
-
-        prepareArgs(startPage, pageSize, showSuccess, showFailure, productIndexingService);
-        return ResponseEntity.ok(this::writeTo);
-    }
 
     @PostMapping(produces = MediaType.APPLICATION_NDJSON_VALUE)
     public ResponseEntity<StreamingResponseBody> upsertProducts(@RequestParam (defaultValue = "0") int startPage,

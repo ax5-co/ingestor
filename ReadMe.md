@@ -1,9 +1,9 @@
 Ingestion takes place by consuming one or more boutiqaat_v2 table(s), in pages (paginated data consumption), each 
-page is an iteration. The read data is assembled into DTOs, then a rest client (Feign) is used to 
-communicate the models to CRS upsertion APIs or CDC real-time ingestion API.
+page is an iteration. The read data is assembled into CRS-corresponding models, a rest client (Feign) is used to 
+communicate the models to CRS upsertion APIs.
 
 All APIs are found in IngestionController.java. All APIs are POST.
-All APIs stream their response as failures/success
+All APIs stream their response as failures/success model upserts are captured
 To observe streamed output, use curl command
 
 Every streamed output follows the structure:

@@ -15,10 +15,10 @@ import java.util.Objects;
 @AllArgsConstructor
 @Entity
 @Table(name = "catalog_product_entity", schema = "boutiqaat_v2")
-public class CatalogProductEntity {
+public class CatalogProductEntity extends BasicEntity{
     @Id
     @Column(name = "row_id")
-    private Long productId;
+    private long id;
 
     @Column(name = "type_id")
     private String type;
@@ -31,11 +31,11 @@ public class CatalogProductEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         CatalogProductEntity that = (CatalogProductEntity) o;
-        return productId == that.productId;
+        return Objects.equals(id, that.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(productId);
+        return Objects.hash(id);
     }
 }
