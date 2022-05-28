@@ -29,23 +29,23 @@ means the ingestion iterations count is less but memory consumption is higher.
 
 
 Feed [sku] table of multi_stocks DB
-curl --location --request POST "http://localhost:8099/ingestion?startPage=838&pageSize=200" --output -
+curl --location --request POST "http://host:8099/ingestion?startPage=838&pageSize=200" --output -
 
 Feed [configurable] table of multi_stocks DB
-curl --location --request POST "http://localhost:8099/ingestion/config" --output -
+curl --location --request POST "http://host:8099/ingestion/config" --output -
 
 Feed [bundle] table of multi_stocks DB
-curl --location --request POST "http://localhost:8099/ingestion/bundle?startPage=50&pageSize=200" --output -
+curl --location --request POST "http://host:8099/ingestion/bundle?startPage=50&pageSize=200" --output -
 
 Feed [stock] table of multi_stocks DB, with real data (KW)
-curl --location --request POST "http://localhost:8099/ingestion/inventory?pageSize=100" --output -
+curl --location --request POST "http://host:8099/ingestion/inventory?pageSize=100" --output -
 Feed [stock] table of multi_stocks DB, with dummy data (SA)
-curl --location --request POST "http://localhost:8099/ingestion/inventory?pageSize=100&dummy=true" --output -
+curl --location --request POST "http://host:8099/ingestion/inventory?pageSize=100&dummy=true" --output -
 
 Feed [price] table of multi_stocks DB, with real data (KW)
-curl --location --request POST "http://localhost:8099/ingestion/price" --output -
+curl --location --request POST "http://host:8099/ingestion/price" --output -
 Feed [price] table of multi_stocks DB, with dummy data (SA)
-curl --location --request POST "http://localhost:8099/ingestion/price?dummy=true" --output -
+curl --location --request POST "http://host:8099/ingestion/price?dummy=true" --output -
 
 Feed [ES products index]
-curl --location --request POST "http://localhost:8099/ingestion/es-index?startPage=0&pageSize=1000" --output -
+curl --location --request POST "http://host:8099/ingestion/es-index?startPage=0&pageSize=200" --output -
